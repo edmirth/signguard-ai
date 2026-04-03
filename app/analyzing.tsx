@@ -1,13 +1,53 @@
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { colors, fontSizes, spacing } from '@/constants/theme';
+import { useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { router } from 'expo-router';
+import { colors, fontSizes, spacing, radius } from '@/constants/theme';
+import { useAnalyzeContract } from '@/hooks/useAnalyzeContract';
+import { LoadingAnalysis } from '@/components/LoadingAnalysis';
+import { getPendingScan, clearPendingScan } from '@/lib/pendingScan';
 
-// Placeholder — implemented fully in US-016 (useAnalyzeContract + LoadingAnalysis)
 export default function AnalyzingScreen() {
+  const { analyze, isAnalyzing, error, progress } = useAnalyzeContract();
+
+  useEffect(() => {
+    const { base64, mimeType } = getPendingScan();
+    if (!base64) {
+      router.replace('/(tabs)/scan');
+      return;
+    }
+
+    analyze(base64, mimeType).then((result) => {
+      clearPendingScan();
+      if (result) {
+        router.replace(`/report/${result.scanId}`);
+      }
+      // error state is shown below if result is null
+    });
+  }, []);
+
+  function handleRetry() {
+    router.replace('/(tabs)/scan');
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorIcon}>⚠️</Text>
+        <Text style={styles.errorTitle}>Analysis Failed</Text>
+        <Text style={styles.errorMessage}>{error.message}</Text>
+        <Pressable
+          style={styles.retryButton}
+          onPress={handleRetry}
+        >
+          <Text style={styles.retryText}>Try Again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={colors.accent} />
-      <Text style={styles.text}>Analyzing your contract…</Text>
-      <Text style={styles.sub}>This will be ready in US-016</Text>
+      <LoadingAnalysis progress={progress} />
     </View>
   );
 }
@@ -18,16 +58,34 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: spacing.md,
+    paddingHorizontal: spacing.xl,
   },
-  text: {
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  errorTitle: {
     color: colors.text,
-    fontSize: fontSizes.lg,
-    fontWeight: '600',
-    marginTop: spacing.md,
+    fontSize: fontSizes.xl,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
   },
-  sub: {
-    color: colors.textMuted,
-    fontSize: fontSizes.sm,
+  errorMessage: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.md,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.xl,
+  },
+  retryButton: {
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.lg,
+  },
+  retryText: {
+    color: colors.text,
+    fontSize: fontSizes.md,
+    fontWeight: '600',
   },
 });
