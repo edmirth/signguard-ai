@@ -295,21 +295,26 @@ export default function ReportScreen() {
                   </View>
                 ))}
 
-                {/* Pro CTA */}
-                <TouchableOpacity
-                  style={styles.proCta}
-                  onPress={() => router.push('/paywall')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.proCtaIcon}>✨</Text>
-                  <View style={styles.proCtaText}>
-                    <Text style={styles.proCtaTitle}>Get AI Negotiation Scripts</Text>
-                    <Text style={styles.proCtaSubtitle}>
-                      Word-for-word scripts tailored to your contract
-                    </Text>
-                  </View>
-                  <Text style={styles.proCtaArrow}>{'→'}</Text>
-                </TouchableOpacity>
+                {/* Pro CTA — only shown for free users */}
+                {!isPro && (
+                  <TouchableOpacity
+                    style={styles.proCta}
+                    onPress={() => {
+                      console.log('[analytics] paywall_shown', { trigger: 'negotiation_scripts' });
+                      router.push('/paywall');
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.proCtaIcon}>✨</Text>
+                    <View style={styles.proCtaText}>
+                      <Text style={styles.proCtaTitle}>Get AI Negotiation Scripts</Text>
+                      <Text style={styles.proCtaSubtitle}>
+                        Word-for-word scripts tailored to your contract
+                      </Text>
+                    </View>
+                    <Text style={styles.proCtaArrow}>{'→'}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : null}
 

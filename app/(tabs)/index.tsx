@@ -39,11 +39,13 @@ export default function HomeScreen() {
     if (canScan) {
       router.push('/scan');
     } else {
+      console.log('[analytics] paywall_shown', { trigger: 'scan_limit_home' });
       router.push('/paywall');
     }
   }
 
   function handleUpgrade() {
+    console.log('[analytics] paywall_shown', { trigger: 'scan_limit_banner' });
     router.push('/paywall');
   }
 

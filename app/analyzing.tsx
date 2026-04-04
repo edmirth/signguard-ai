@@ -25,11 +25,18 @@ export default function AnalyzingScreen() {
     });
   }, []);
 
+  useEffect(() => {
+    if (error?.code === 'scan_limit_reached') {
+      console.log('[analytics] paywall_shown', { trigger: 'scan_limit_reached' });
+      router.replace('/paywall');
+    }
+  }, [error]);
+
   function handleRetry() {
     router.replace('/(tabs)/scan');
   }
 
-  if (error) {
+  if (error && error.code !== 'scan_limit_reached') {
     return (
       <View style={styles.container}>
         <Text style={styles.errorIcon}>⚠️</Text>
