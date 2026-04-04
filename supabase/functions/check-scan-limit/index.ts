@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const SCAN_LIMIT_FREE = 2;
 
 Deno.serve(async (req: Request) => {
+  try {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -83,6 +84,13 @@ Deno.serve(async (req: Request) => {
       headers: { 'Content-Type': 'application/json' },
     }
   );
+  } catch (error) {
+    console.error('check-scan-limit error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 });
 
 function getNextMonthStart(): string {

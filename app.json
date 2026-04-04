@@ -30,7 +30,14 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "signguard",
+          "project": "signguard-ai"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

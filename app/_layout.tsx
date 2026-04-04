@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import * as Sentry from '@sentry/react-native';
 
 import { AuthProvider } from '@/providers/AuthProvider';
 import { SubscriptionProvider } from '@/providers/SubscriptionProvider';
@@ -19,9 +20,11 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync();
 
-// Sentry stub — replace with real init when EXPO_PUBLIC_SENTRY_DSN is set
 function initSentry() {
-  // TODO: Sentry.init({ dsn: process.env.EXPO_PUBLIC_SENTRY_DSN })
+  const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+  if (dsn) {
+    Sentry.init({ dsn, tracesSampleRate: 1.0 });
+  }
 }
 
 // RevenueCat is initialized per-user inside SubscriptionProvider
