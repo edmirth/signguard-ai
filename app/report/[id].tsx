@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,18 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import { colors, fontSizes, spacing, radius } from '@/constants/theme';
 import { useScans } from '@/hooks/useScans';
 import { useScanLimit } from '@/hooks/useScanLimit';
 import { RiskScoreRing } from '@/components/RiskScoreRing';
 import { ClauseCard } from '@/components/ClauseCard';
+import { ShareReportCapture } from '@/components/ShareReportCapture';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { CONTRACT_TYPES, ContractTypeKey } from '@/constants/contractTypes';
 import { formatRelativeDate } from '@/lib/utils';
@@ -58,6 +63,8 @@ export default function ReportScreen() {
   const { isPro } = useScanLimit();
   const [scan, setScan] = useState<Scan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSharing, setIsSharing] = useState(false);
+  const shareRef = useRef<View>(null);
 
   const loadScan = useCallback(async () => {
     if (!id) return;
@@ -92,8 +99,42 @@ export default function ReportScreen() {
     }
   }
 
+  async function handleShare() {
+    if (!scan || !shareRef.current || isSharing) return;
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert('Sharing not available', 'Sharing is not supported on this device.');
+      return;
+    }
+    try {
+      setIsSharing(true);
+      const uri = await captureRef(shareRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+      });
+      await Sharing.shareAsync(uri, {
+        mimeType: 'image/png',
+        dialogTitle: 'Share Risk Report',
+      });
+      // Analytics stub — tracked via US-026 lib/analytics.ts when implemented
+      console.log('[analytics] report_shared', { scan_id: scan.id });
+    } catch (err) {
+      // User cancelled or error — no-op
+    } finally {
+      setIsSharing(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* Off-screen capture view for share image */}
+      {scan ? (
+        <View style={styles.offScreen}>
+          <ShareReportCapture ref={shareRef} scan={scan} />
+        </View>
+      ) : null}
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()}>
@@ -102,8 +143,15 @@ export default function ReportScreen() {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {isLoading ? 'Report' : (scan?.title ?? 'Report')}
         </Text>
-        {/* Share button placeholder — filled in US-020 */}
-        <View style={styles.headerBtn} />
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={handleShare}
+          disabled={isSharing || isLoading || !scan}
+        >
+          <Text style={[styles.shareIcon, (isSharing || isLoading || !scan) && styles.shareIconDisabled]}>
+            {'↑'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -558,5 +606,19 @@ const styles = StyleSheet.create({
 
   bottomPadding: {
     height: spacing['2xl'],
+  },
+  shareIcon: {
+    fontSize: fontSizes.xl,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  shareIconDisabled: {
+    color: colors.textMuted,
+  },
+  offScreen: {
+    position: 'absolute',
+    left: -9999,
+    top: -9999,
+    opacity: 0,
   },
 });
