@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/providers/AuthProvider';
+import { SubscriptionProvider } from '@/providers/SubscriptionProvider';
 
 export {
   ErrorBoundary,
@@ -27,10 +28,7 @@ function initPostHog() {
   // TODO: PostHog.init(process.env.EXPO_PUBLIC_POSTHOG_KEY, { host: 'https://app.posthog.com' })
 }
 
-// RevenueCat stub — initialized per-user after sign-in
-function initRevenueCat() {
-  // TODO: Purchases.configure({ apiKey: process.env.EXPO_PUBLIC_REVENUECAT_KEY })
-}
+// RevenueCat is initialized per-user inside SubscriptionProvider
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -46,7 +44,6 @@ export default function RootLayout() {
     if (loaded) {
       initSentry();
       initPostHog();
-      initRevenueCat();
       SplashScreen.hideAsync();
     }
   }, [loaded]);
@@ -57,6 +54,7 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
+      <SubscriptionProvider>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -65,6 +63,7 @@ export default function RootLayout() {
         <Stack.Screen name="clause/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
+      </SubscriptionProvider>
     </AuthProvider>
   );
 }
