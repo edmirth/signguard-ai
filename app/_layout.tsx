@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider } from '@/providers/AuthProvider';
 import { SubscriptionProvider } from '@/providers/SubscriptionProvider';
+import { initAnalytics, trackEvent } from '@/lib/analytics';
 
 export {
   ErrorBoundary,
@@ -21,11 +22,6 @@ SplashScreen.preventAutoHideAsync();
 // Sentry stub — replace with real init when EXPO_PUBLIC_SENTRY_DSN is set
 function initSentry() {
   // TODO: Sentry.init({ dsn: process.env.EXPO_PUBLIC_SENTRY_DSN })
-}
-
-// PostHog stub — replace with real init when EXPO_PUBLIC_POSTHOG_KEY is set
-function initPostHog() {
-  // TODO: PostHog.init(process.env.EXPO_PUBLIC_POSTHOG_KEY, { host: 'https://app.posthog.com' })
 }
 
 // RevenueCat is initialized per-user inside SubscriptionProvider
@@ -43,7 +39,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       initSentry();
-      initPostHog();
+      initAnalytics();
+      trackEvent('app_opened');
       SplashScreen.hideAsync();
     }
   }, [loaded]);

@@ -18,6 +18,7 @@ import { readAsStringAsync } from 'expo-file-system/legacy';
 import DocumentScanner, { ResponseType, ScanDocumentResponseStatus } from 'react-native-document-scanner-plugin';
 import { colors, fontSizes, spacing, radius } from '@/constants/theme';
 import { setPendingScan } from '@/lib/pendingScan';
+import { trackEvent } from '@/lib/analytics';
 
 type ScreenState = 'choose' | 'preview' | 'converting';
 
@@ -104,6 +105,7 @@ export default function ScanScreen() {
   const handleAnalyze = useCallback(() => {
     if (!previewBase64) return;
     setPendingScan(previewBase64, previewMime);
+    trackEvent('scan_started');
     router.push('/analyzing');
   }, [previewBase64, previewMime]);
 

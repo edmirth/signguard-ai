@@ -10,6 +10,7 @@ import Animated, {
 import { colors, fontSizes, spacing, radius } from '@/constants/theme';
 import { Clause } from '@/types/database';
 import { Badge } from '@/components/ui/Badge';
+import { trackEvent } from '@/lib/analytics';
 
 interface ClauseCardProps {
   clause: Clause;
@@ -41,6 +42,9 @@ export function ClauseCard({ clause, isPro, onNegotiationPress }: ClauseCardProp
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const next = !expanded;
     setExpanded(next);
+    if (next) {
+      trackEvent('clause_expanded', { clause_id: clause.id, risk_level: clause.risk_level });
+    }
     rotation.value = withTiming(next ? 180 : 0, {
       duration: 220,
       easing: Easing.out(Easing.quad),

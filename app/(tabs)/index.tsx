@@ -15,6 +15,7 @@ import { ScanLimitBanner } from '@/components/ScanLimitBanner';
 import { ScanCard } from '@/components/ScanCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import type { Scan } from '@/types/database';
+import { trackEvent } from '@/lib/analytics';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -39,13 +40,13 @@ export default function HomeScreen() {
     if (canScan) {
       router.push('/scan');
     } else {
-      console.log('[analytics] paywall_shown', { trigger: 'scan_limit_home' });
+      trackEvent('paywall_shown', { trigger: 'scan_limit_home' });
       router.push('/paywall');
     }
   }
 
   function handleUpgrade() {
-    console.log('[analytics] paywall_shown', { trigger: 'scan_limit_banner' });
+    trackEvent('paywall_shown', { trigger: 'scan_limit_banner' });
     router.push('/paywall');
   }
 

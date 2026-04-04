@@ -5,6 +5,7 @@ import { colors, fontSizes, spacing, radius } from '@/constants/theme';
 import { useAnalyzeContract } from '@/hooks/useAnalyzeContract';
 import { LoadingAnalysis } from '@/components/LoadingAnalysis';
 import { getPendingScan, clearPendingScan } from '@/lib/pendingScan';
+import { trackEvent } from '@/lib/analytics';
 
 export default function AnalyzingScreen() {
   const { analyze, isAnalyzing, error, progress } = useAnalyzeContract();
@@ -19,6 +20,7 @@ export default function AnalyzingScreen() {
     analyze(base64, mimeType).then((result) => {
       clearPendingScan();
       if (result) {
+        trackEvent('scan_completed', { scan_id: result.scanId });
         router.replace(`/report/${result.scanId}`);
       }
       // error state is shown below if result is null
@@ -26,9 +28,13 @@ export default function AnalyzingScreen() {
   }, []);
 
   useEffect(() => {
-    if (error?.code === 'scan_limit_reached') {
-      console.log('[analytics] paywall_shown', { trigger: 'scan_limit_reached' });
-      router.replace('/paywall');
+    if (error) {
+      if (error.code === 'scan_limit_reached') {
+        trackEvent('paywall_shown', { trigger: 'scan_limit_reached' });
+        router.replace('/paywall');
+      } else {
+        trackEvent('scan_failed', { error_code: error.code });
+      }
     }
   }, [error]);
 

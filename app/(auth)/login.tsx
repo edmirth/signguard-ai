@@ -10,6 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { colors, fontSizes, spacing, radius } from '@/constants/theme';
+import { trackEvent } from '@/lib/analytics';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function LoginScreen() {
     setAppleLoading(true);
     try {
       await signInWithApple();
+      trackEvent('sign_up_completed', { method: 'apple' });
       router.replace('/(tabs)');
     } catch {
       // sign-in cancelled or failed silently
@@ -33,6 +35,7 @@ export default function LoginScreen() {
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
+      trackEvent('sign_up_completed', { method: 'google' });
       router.replace('/(tabs)');
     } catch {
       // sign-in cancelled or failed silently

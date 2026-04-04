@@ -11,6 +11,7 @@ import {
 import { router } from 'expo-router';
 import { colors, fontSizes, spacing, radius } from '@/constants/theme';
 import { useSubscription } from '@/hooks/useSubscription';
+import { trackEvent } from '@/lib/analytics';
 
 const VALUE_PROPS = [
   'Unlimited contract scans',
@@ -34,11 +35,14 @@ export default function PaywallScreen() {
       } else {
         await purchaseAnnual();
       }
+      trackEvent('subscription_started', { plan: selectedPlan });
       router.back();
     } catch (err: unknown) {
       // User cancelled — don't show error
       const message = err instanceof Error ? err.message : String(err);
-      if (!message.includes('cancelled') && !message.includes('cancel')) {
+      if (message.includes('cancelled') || message.includes('cancel')) {
+        trackEvent('subscription_cancelled', { plan: selectedPlan });
+      } else {
         Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
       }
     } finally {

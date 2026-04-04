@@ -21,6 +21,7 @@ import { ShareReportCapture } from '@/components/ShareReportCapture';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { CONTRACT_TYPES, ContractTypeKey } from '@/constants/contractTypes';
 import { formatRelativeDate } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
 import type { Scan, Clause } from '@/types/database';
 
 const RISK_ORDER: Record<Clause['risk_level'], number> = {
@@ -78,6 +79,12 @@ export default function ReportScreen() {
     loadScan();
   }, [loadScan]);
 
+  useEffect(() => {
+    if (scan) {
+      trackEvent('report_viewed', { scan_id: scan.id, contract_type: scan.contract_type });
+    }
+  }, [scan?.id]);
+
   const typeKey = (scan?.contract_type ?? 'other') as ContractTypeKey;
   const typeConfig = CONTRACT_TYPES[typeKey] ?? CONTRACT_TYPES.other;
 
@@ -117,8 +124,7 @@ export default function ReportScreen() {
         mimeType: 'image/png',
         dialogTitle: 'Share Risk Report',
       });
-      // Analytics stub — tracked via US-026 lib/analytics.ts when implemented
-      console.log('[analytics] report_shared', { scan_id: scan.id });
+      trackEvent('report_shared', { scan_id: scan.id });
     } catch (err) {
       // User cancelled or error — no-op
     } finally {
@@ -300,7 +306,7 @@ export default function ReportScreen() {
                   <TouchableOpacity
                     style={styles.proCta}
                     onPress={() => {
-                      console.log('[analytics] paywall_shown', { trigger: 'negotiation_scripts' });
+                      trackEvent('paywall_shown', { trigger: 'negotiation_scripts' });
                       router.push('/paywall');
                     }}
                     activeOpacity={0.8}
