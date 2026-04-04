@@ -1,26 +1,39 @@
 {
   "expo": {
-    "name": "signguard-ai",
+    "name": "SignGuard AI",
     "slug": "signguard-ai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "signguardai",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#050508"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.signguard.ai",
+      "infoPlist": {
+        "NSCameraUsageDescription": "SignGuard AI uses your camera to scan and analyze contract documents.",
+        "NSPhotoLibraryUsageDescription": "SignGuard AI accesses your photo library so you can upload contract images for analysis.",
+        "NSPhotoLibraryAddUsageDescription": "SignGuard AI saves your contract scan results to your photo library."
+      }
     },
     "android": {
+      "package": "com.signguard.ai",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#050508"
       },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -31,6 +44,26 @@
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SignGuard AI uses your camera to scan and analyze contract documents."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SignGuard AI accesses your photo library so you can upload contract images for analysis.",
+          "cameraPermission": "SignGuard AI uses your camera to scan contract documents."
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
       [
         "@sentry/react-native/expo",
         {
@@ -41,6 +74,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
     }
   }
 }
