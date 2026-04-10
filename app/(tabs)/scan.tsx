@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { readAsStringAsync } from 'expo-file-system/legacy';
 import DocumentScanner, { ResponseType, ScanDocumentResponseStatus } from 'react-native-document-scanner-plugin';
-import { colors, fontSizes, spacing, radius } from '@/constants/theme';
+import { colors, fontSizes, fonts, spacing, radius } from '@/constants/theme';
 import { setPendingScan } from '@/lib/pendingScan';
 import { trackEvent } from '@/lib/analytics';
 
@@ -47,7 +47,7 @@ export default function ScanScreen() {
         setState('preview');
       }
     } catch {
-      // user cancelled or error — stay on choose screen
+      // user cancelled — stay on choose screen
     }
   }, []);
 
@@ -114,7 +114,7 @@ export default function ScanScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.convertingText}>Processing file…</Text>
+          <Text style={styles.convertingText}>PROCESSING FILE</Text>
         </View>
       </SafeAreaView>
     );
@@ -124,7 +124,8 @@ export default function ScanScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.previewHeader}>
-          <Text style={styles.previewTitle}>Contract Preview</Text>
+          <Text style={styles.screenLabel}>DOCUMENT PREVIEW</Text>
+          <Text style={styles.previewHint}>Confirm the document is clear and readable</Text>
         </View>
         <View style={styles.previewImageContainer}>
           <Image
@@ -132,13 +133,18 @@ export default function ScanScreen() {
             style={styles.previewImage}
             resizeMode="contain"
           />
+          {/* Corner marks */}
+          <View style={[styles.corner, styles.cornerTL]} />
+          <View style={[styles.corner, styles.cornerTR]} />
+          <View style={[styles.corner, styles.cornerBL]} />
+          <View style={[styles.corner, styles.cornerBR]} />
         </View>
         <View style={styles.previewActions}>
           <TouchableOpacity style={styles.retakeButton} onPress={handleRetake}>
-            <Text style={styles.retakeText}>Retake</Text>
+            <Text style={styles.retakeText}>RETAKE</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.analyzeButton} onPress={handleAnalyze}>
-            <Text style={styles.analyzeText}>Analyze Contract</Text>
+            <Text style={styles.analyzeText}>ANALYZE →</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -148,45 +154,61 @@ export default function ScanScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.chooseContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.heading}>Scan a Contract</Text>
-        <Text style={styles.subheading}>
-          Take a photo of any contract or upload from your device.
+        <Text style={styles.screenLabel}>SCAN CONTRACT</Text>
+        <Text style={styles.screenSubtitle}>
+          Choose how to import your document
         </Text>
 
-        {/* Scan with camera */}
-        <TouchableOpacity style={styles.primaryOption} onPress={handleScanDocument} activeOpacity={0.8}>
-          <Text style={styles.optionIcon}>📷</Text>
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Scan with camera — primary */}
+        <TouchableOpacity style={styles.primaryOption} onPress={handleScanDocument} activeOpacity={0.75}>
+          <View style={styles.optionNumber}>
+            <Text style={styles.optionNumberText}>01</Text>
+          </View>
           <View style={styles.optionTextGroup}>
-            <Text style={styles.optionTitle}>Scan Document</Text>
+            <Text style={styles.optionTitle}>CAMERA SCAN</Text>
             <Text style={styles.optionDesc}>
-              Use your camera with automatic edge detection
-              {Platform.OS === 'web' ? ' (requires native build)' : ''}
+              Automatic edge detection{Platform.OS === 'web' ? ' — requires native build' : ''}
             </Text>
           </View>
-          <Text style={styles.optionArrow}>›</Text>
+          <Text style={styles.optionArrow}>→</Text>
         </TouchableOpacity>
 
-        <Text style={styles.orLabel}>or upload</Text>
+        <View style={styles.optionDivider} />
 
         {/* Gallery */}
-        <TouchableOpacity style={styles.secondaryOption} onPress={handlePickFromGallery} activeOpacity={0.8}>
-          <Text style={styles.optionIcon}>🖼️</Text>
+        <TouchableOpacity style={styles.secondaryOption} onPress={handlePickFromGallery} activeOpacity={0.75}>
+          <View style={styles.optionNumber}>
+            <Text style={styles.optionNumberText}>02</Text>
+          </View>
           <View style={styles.optionTextGroup}>
-            <Text style={styles.optionTitle}>From Photo Library</Text>
+            <Text style={styles.optionTitle}>PHOTO LIBRARY</Text>
             <Text style={styles.optionDesc}>Select an existing photo of a contract</Text>
           </View>
-          <Text style={styles.optionArrow}>›</Text>
+          <Text style={styles.optionArrow}>→</Text>
         </TouchableOpacity>
 
+        <View style={styles.optionDivider} />
+
         {/* Files */}
-        <TouchableOpacity style={styles.secondaryOption} onPress={handlePickDocument} activeOpacity={0.8}>
-          <Text style={styles.optionIcon}>📄</Text>
-          <View style={styles.optionTextGroup}>
-            <Text style={styles.optionTitle}>From Files</Text>
-            <Text style={styles.optionDesc}>Import a PDF or image from your device storage</Text>
+        <TouchableOpacity style={styles.secondaryOption} onPress={handlePickDocument} activeOpacity={0.75}>
+          <View style={styles.optionNumber}>
+            <Text style={styles.optionNumberText}>03</Text>
           </View>
-          <Text style={styles.optionArrow}>›</Text>
+          <View style={styles.optionTextGroup}>
+            <Text style={styles.optionTitle}>IMPORT FILE</Text>
+            <Text style={styles.optionDesc}>PDF or image from your device storage</Text>
+          </View>
+          <Text style={styles.optionArrow}>→</Text>
         </TouchableOpacity>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.disclaimer}>
+          Your document is processed securely and never stored without your consent.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -204,10 +226,13 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   convertingText: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.md,
-    marginTop: spacing.sm,
+    color: colors.textMuted,
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+    letterSpacing: 3,
+    fontFamily: fonts.mono,
   },
+
   // Choose state
   chooseContent: {
     flexGrow: 1,
@@ -215,41 +240,51 @@ const styles = StyleSheet.create({
     paddingTop: spacing['2xl'],
     paddingBottom: spacing['2xl'],
   },
-  heading: {
-    color: colors.text,
-    fontSize: fontSizes['2xl'],
+  screenLabel: {
+    color: colors.accent,
+    fontSize: fontSizes.xs,
     fontWeight: '700',
+    letterSpacing: 4,
     marginBottom: spacing.sm,
   },
-  subheading: {
+  screenSubtitle: {
     color: colors.textSecondary,
     fontSize: fontSizes.md,
-    marginBottom: spacing['2xl'],
     lineHeight: 22,
+    marginBottom: spacing.xl,
   },
+  divider: {
+    height: 1,
+    backgroundColor: colors.cardBorder,
+    marginBottom: spacing.xl,
+  },
+
+  // Options
   primaryOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.accent + '22',
-    borderColor: colors.accent + '66',
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    paddingVertical: spacing.lg,
+    gap: spacing.md,
   },
   secondaryOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
-    borderColor: colors.cardBorder,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    paddingVertical: spacing.lg,
+    gap: spacing.md,
   },
-  optionIcon: {
-    fontSize: 28,
-    marginRight: spacing.md,
+  optionDivider: {
+    height: 1,
+    backgroundColor: colors.cardBorder,
+  },
+  optionNumber: {
+    width: 36,
+  },
+  optionNumberText: {
+    color: colors.textMuted,
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+    fontFamily: fonts.mono,
+    letterSpacing: 1,
   },
   optionTextGroup: {
     flex: 1,
@@ -257,8 +292,9 @@ const styles = StyleSheet.create({
   optionTitle: {
     color: colors.text,
     fontSize: fontSizes.md,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    marginBottom: 3,
   },
   optionDesc: {
     color: colors.textSecondary,
@@ -266,40 +302,74 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   optionArrow: {
-    color: colors.textMuted,
-    fontSize: 22,
-    marginLeft: spacing.sm,
+    color: colors.accent,
+    fontSize: fontSizes.lg,
+    fontWeight: '600',
   },
-  orLabel: {
+
+  disclaimer: {
     color: colors.textMuted,
-    fontSize: fontSizes.sm,
+    fontSize: fontSizes.xs,
+    lineHeight: 18,
     textAlign: 'center',
-    marginBottom: spacing.lg,
-    letterSpacing: 0.5,
+    paddingHorizontal: spacing.md,
   },
+
   // Preview state
   previewHeader: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
   },
-  previewTitle: {
-    color: colors.text,
-    fontSize: fontSizes.xl,
-    fontWeight: '700',
+  previewHint: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.sm,
+    marginTop: spacing.xs,
   },
   previewImageContainer: {
     flex: 1,
     marginHorizontal: spacing.xl,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     overflow: 'hidden',
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.surfaceBorder,
+    position: 'relative',
   },
   previewImage: {
     flex: 1,
     width: '100%',
+  },
+  // Corner bracket marks
+  corner: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderColor: colors.accent,
+  },
+  cornerTL: {
+    top: 8,
+    left: 8,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+  },
+  cornerTR: {
+    top: 8,
+    right: 8,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+  },
+  cornerBL: {
+    bottom: 8,
+    left: 8,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+  },
+  cornerBR: {
+    bottom: 8,
+    right: 8,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
   },
   previewActions: {
     flexDirection: 'row',
@@ -311,25 +381,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.surfaceBorder,
     borderWidth: 1,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
   retakeText: {
-    color: colors.text,
-    fontSize: fontSizes.md,
-    fontWeight: '600',
+    color: colors.textSecondary,
+    fontSize: fontSizes.sm,
+    fontWeight: '700',
+    letterSpacing: 2,
   },
   analyzeButton: {
     flex: 2,
     backgroundColor: colors.accent,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
   analyzeText: {
-    color: colors.text,
-    fontSize: fontSizes.md,
-    fontWeight: '700',
+    color: colors.bg,
+    fontSize: fontSizes.sm,
+    fontWeight: '800',
+    letterSpacing: 2,
   },
 });

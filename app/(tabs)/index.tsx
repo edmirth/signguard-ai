@@ -1,13 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   FlatList,
+  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
-import { colors, fontSizes, spacing } from '@/constants/theme';
+import { colors, fontSizes, fonts, spacing, radius } from '@/constants/theme';
 import { useAuthContext } from '@/providers/AuthProvider';
 import { useScans } from '@/hooks/useScans';
 import { useScanLimit } from '@/hooks/useScanLimit';
@@ -17,28 +19,23 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import type { Scan } from '@/types/database';
 import { trackEvent } from '@/lib/analytics';
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
 export default function HomeScreen() {
   const { profile } = useAuthContext();
   const { scans, isLoading, fetchScans } = useScans();
   const { canScan, scansUsed, scansLimit, resetsAt, isPro } = useScanLimit();
 
-  useEffect(() => {
-    fetchScans();
-  }, [fetchScans]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchScans();
+    }, [fetchScans])
+  );
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
   const recentScans = scans.slice(0, 5);
 
   function handleScanPress() {
     if (canScan) {
-      router.push('/scan');
+      router.push('/(tabs)/scan');
     } else {
       trackEvent('paywall_shown', { trigger: 'scan_limit_home' });
       router.push('/paywall');
@@ -55,16 +52,25 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={recentScans}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.content}
         ListHeaderComponent={
           <>
-            <Text style={styles.greeting}>
-              {getGreeting()}, {firstName}
-            </Text>
+            {/* Header row */}
+            <View style={styles.topBar}>
+              <View>
+                <Text style={styles.appLabel}>SIGNGUARD AI</Text>
+                <Text style={styles.userName}>{firstName}</Text>
+              </View>
+              <View style={[styles.planBadge, isPro && styles.planBadgePro]}>
+                <Text style={[styles.planText, isPro && styles.planTextPro]}>
+                  {isPro ? 'PRO' : 'FREE'}
+                </Text>
+              </View>
+            </View>
 
             <ScanLimitBanner
               isPro={isPro}
@@ -74,17 +80,31 @@ export default function HomeScreen() {
               onUpgrade={handleUpgrade}
             />
 
+            {/* Primary scan CTA */}
             <TouchableOpacity
               style={styles.ctaButton}
               onPress={handleScanPress}
-              activeOpacity={0.85}
+              activeOpacity={0.8}
             >
-              <Text style={styles.ctaIcon}>📷</Text>
-              <Text style={styles.ctaText}>Scan a Contract</Text>
+              <View style={styles.ctaInner}>
+                <View style={styles.ctaIconWrap}>
+                  <View style={styles.ctaIconBar} />
+                  <View style={[styles.ctaIconBar, styles.ctaIconBarMid]} />
+                  <View style={styles.ctaIconBar} />
+                </View>
+                <View style={styles.ctaTextGroup}>
+                  <Text style={styles.ctaTitle}>SCAN CONTRACT</Text>
+                  <Text style={styles.ctaSubtitle}>Point at any document to analyze</Text>
+                </View>
+                <Text style={styles.ctaArrow}>→</Text>
+              </View>
             </TouchableOpacity>
 
             {recentScans.length > 0 && (
-              <Text style={styles.sectionTitle}>Recent Scans</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionLabel}>RECENT</Text>
+                <View style={styles.sectionLine} />
+              </View>
             )}
           </>
         }
@@ -94,14 +114,14 @@ export default function HomeScreen() {
         ListEmptyComponent={
           !isLoading ? (
             <EmptyState
-              icon="📄"
-              title="No scans yet"
-              subtitle="Tap the button above to scan your first contract"
+              icon={<Text style={styles.emptyIcon}>▣</Text>}
+              title="No contracts yet"
+              subtitle="Tap SCAN CONTRACT above to analyze your first document"
             />
           ) : null
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -111,40 +131,124 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   content: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing['4xl'],
   },
-  greeting: {
+
+  // Top bar
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
+  },
+  appLabel: {
+    color: colors.textMuted,
+    fontSize: fontSizes.xs,
+    fontWeight: '600',
+    letterSpacing: 3,
+    marginBottom: spacing.xs,
+  },
+  userName: {
     color: colors.text,
     fontSize: fontSizes['2xl'],
-    fontWeight: '700',
-    marginBottom: spacing.lg,
-    marginTop: spacing.sm,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
+  planBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+  },
+  planBadgePro: {
+    backgroundColor: `${colors.proGold}15`,
+    borderColor: `${colors.proGold}40`,
+  },
+  planText: {
+    color: colors.textMuted,
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+    letterSpacing: 2,
+    fontFamily: fonts.mono,
+  },
+  planTextPro: {
+    color: colors.proGold,
+  },
+
+  // Scan CTA
   ctaButton: {
     backgroundColor: colors.accent,
-    borderRadius: 12,
-    paddingVertical: spacing.lg,
+    borderRadius: radius.md,
+    marginBottom: spacing.xl,
+    overflow: 'hidden',
+  },
+  ctaInner: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+  },
+  ctaIconWrap: {
+    gap: 4,
     justifyContent: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
+    width: 20,
   },
-  ctaIcon: {
-    fontSize: 20,
+  ctaIconBar: {
+    height: 2,
+    width: 20,
+    backgroundColor: colors.bg,
+    borderRadius: 1,
   },
-  ctaText: {
-    color: colors.text,
-    fontSize: fontSizes.lg,
-    fontWeight: '700',
+  ctaIconBarMid: {
+    width: 14,
   },
-  sectionTitle: {
-    color: colors.textSecondary,
-    fontSize: fontSizes.sm,
+  ctaTextGroup: {
+    flex: 1,
+  },
+  ctaTitle: {
+    color: colors.bg,
+    fontSize: fontSizes.md,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  ctaSubtitle: {
+    color: `${colors.bg}99`,
+    fontSize: fontSizes.xs,
+    marginTop: 2,
+    letterSpacing: 0.3,
+  },
+  ctaArrow: {
+    color: colors.bg,
+    fontSize: fontSizes.xl,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.sm,
+  },
+
+  // Section header
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  sectionLabel: {
+    color: colors.textMuted,
+    fontSize: fontSizes.xs,
+    fontWeight: '700',
+    letterSpacing: 3,
+  },
+  sectionLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.cardBorder,
+  },
+
+  emptyIcon: {
+    fontSize: 28,
+    color: colors.textMuted,
   },
 });
