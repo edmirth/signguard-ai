@@ -8,6 +8,9 @@ import {
   SafeAreaView,
   Platform,
   Alert,
+  TextInput,
+  KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { captureRef } from 'react-native-view-shot';
@@ -22,7 +25,13 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { CONTRACT_TYPES, ContractTypeKey } from '@/constants/contractTypes';
 import { formatRelativeDate } from '@/lib/utils';
 import { trackEvent } from '@/lib/analytics';
+import { supabase } from '@/lib/supabase';
 import type { Scan, Clause } from '@/types/database';
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
+}
 
 const RISK_ORDER: Record<Clause['risk_level'], number> = {
   danger: 0,
@@ -66,6 +75,12 @@ export default function ReportScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSharing, setIsSharing] = useState(false);
   const shareRef = useRef<View>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [question, setQuestion] = useState('');
+  const [isAsking, setIsAsking] = useState(false);
 
   const loadScan = useCallback(async () => {
     if (!id) return;
@@ -99,11 +114,7 @@ export default function ReportScreen() {
   const safeCount = sortedClauses.filter((c) => c.risk_level === 'safe').length;
 
   function handleNegotiationPress(clauseId: string) {
-    if (isPro) {
-      router.push(`/clause/${clauseId}`);
-    } else {
-      router.push('/paywall');
-    }
+    router.push(`/clause/${clauseId}`);
   }
 
   async function handleShare() {
@@ -129,6 +140,47 @@ export default function ReportScreen() {
       // User cancelled or error — no-op
     } finally {
       setIsSharing(false);
+    }
+  }
+
+  async function askQuestion() {
+    const q = question.trim();
+    if (!q || !scan || isAsking) return;
+
+    const userMsg: ChatMessage = { role: 'user', text: q };
+    setMessages((prev) => [...prev, userMsg]);
+    setQuestion('');
+    setIsAsking(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+      const res = await fetch(`${supabaseUrl}/functions/v1/ask-contract`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ scan_id: scan.id, question: q }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Failed to get answer');
+
+      const assistantMsg: ChatMessage = { role: 'assistant', text: data.answer };
+      setMessages((prev) => [...prev, assistantMsg]);
+      trackEvent('contract_question_asked', { scan_id: scan.id });
+    } catch (err) {
+      const errMsg: ChatMessage = {
+        role: 'assistant',
+        text: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+      };
+      setMessages((prev) => [...prev, errMsg]);
+    } finally {
+      setIsAsking(false);
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }
 
@@ -160,10 +212,17 @@ export default function ReportScreen() {
         </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {isLoading ? (
           <ReportSkeleton />
@@ -324,10 +383,78 @@ export default function ReportScreen() {
               </View>
             ) : null}
 
+                {/* Ask about this contract */}
+                <View style={styles.chatSection}>
+                  <Text style={styles.sectionLabel}>Ask About This Contract</Text>
+
+                  {messages.length === 0 ? (
+                    <View style={styles.chatEmpty}>
+                      <Text style={styles.chatEmptyText}>
+                        {"Ask anything — \"Can I cancel early?\", \"What happens if I miss a payment?\", \"Am I entitled to a refund?\""}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.messageList}>
+                      {messages.map((msg, i) => (
+                        <View
+                          key={i}
+                          style={[
+                            styles.messageBubble,
+                            msg.role === 'user' ? styles.userBubble : styles.assistantBubble,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.messageText,
+                              msg.role === 'user' ? styles.userMessageText : styles.assistantMessageText,
+                            ]}
+                          >
+                            {msg.text}
+                          </Text>
+                        </View>
+                      ))}
+                      {isAsking && (
+                        <View style={[styles.messageBubble, styles.assistantBubble]}>
+                          <ActivityIndicator size="small" color={colors.accent} />
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+
             <View style={styles.bottomPadding} />
           </>
         )}
       </ScrollView>
+
+      {/* Fixed input bar — only shown when scan is loaded */}
+      {scan && !isLoading ? (
+        <View style={styles.inputBar}>
+          <TextInput
+            style={styles.chatInput}
+            placeholder="Ask anything about this contract..."
+            placeholderTextColor={colors.textMuted}
+            value={question}
+            onChangeText={setQuestion}
+            multiline
+            maxLength={500}
+            editable={!isAsking}
+            returnKeyType="send"
+            onSubmitEditing={askQuestion}
+            blurOnSubmit
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (!question.trim() || isAsking) && styles.sendButtonDisabled]}
+            onPress={askQuestion}
+            disabled={!question.trim() || isAsking}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.sendButtonText}>↑</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -336,6 +463,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  keyboardView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -631,5 +761,92 @@ const styles = StyleSheet.create({
     left: -9999,
     top: -9999,
     opacity: 0,
+  },
+
+  // Chat / Ask section
+  chatSection: {
+    marginBottom: spacing.md,
+  },
+  chatEmpty: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    padding: spacing.lg,
+  },
+  chatEmptyText: {
+    color: colors.textMuted,
+    fontSize: fontSizes.sm,
+    lineHeight: fontSizes.sm * 1.6,
+    fontStyle: 'italic',
+  },
+  messageList: {
+    gap: spacing.sm,
+  },
+  messageBubble: {
+    borderRadius: radius.md,
+    padding: spacing.md,
+    maxWidth: '90%',
+  },
+  userBubble: {
+    backgroundColor: colors.accent,
+    alignSelf: 'flex-end',
+  },
+  assistantBubble: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    alignSelf: 'flex-start',
+  },
+  messageText: {
+    fontSize: fontSizes.sm,
+    lineHeight: fontSizes.sm * 1.6,
+  },
+  userMessageText: {
+    color: colors.text,
+  },
+  assistantMessageText: {
+    color: colors.textSecondary,
+  },
+
+  // Input bar
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+    backgroundColor: colors.bg,
+    gap: spacing.sm,
+  },
+  chatInput: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 100,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    color: colors.text,
+    fontSize: fontSizes.sm,
+  },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    opacity: 0.4,
+  },
+  sendButtonText: {
+    color: colors.text,
+    fontSize: fontSizes.lg,
+    fontWeight: '700',
   },
 });
