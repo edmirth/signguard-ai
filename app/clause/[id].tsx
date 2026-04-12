@@ -3,6 +3,7 @@ import {
   View,
   Text,
   ScrollView,
+  SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
@@ -120,7 +121,8 @@ export default function ClauseScreen() {
   const riskLabel = RISK_LABEL[clause.risk_level] ?? clause.risk_level;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.container}>
+    <ScrollView contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -239,6 +241,7 @@ export default function ClauseScreen() {
         )}
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

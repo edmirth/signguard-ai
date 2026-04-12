@@ -21,10 +21,10 @@ interface RiskScoreRingProps {
 }
 
 function getColor(score: number): string {
-  if (score >= 80) return '#00e5a0';
-  if (score >= 60) return '#ffb340';
-  if (score >= 40) return '#ff8c40';
-  return '#ff4d6a';
+  if (score >= 80) return '#ff4d6a'; // critical — red
+  if (score >= 60) return '#ff8c40'; // high — orange
+  if (score >= 40) return '#ffb340'; // medium — amber
+  return '#00e5a0';                  // low — green
 }
 
 function formatRiskLevel(level: string): string {

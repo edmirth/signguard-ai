@@ -3,6 +3,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 const ANALYSIS_PROMPT = `You are SignGuard AI, an expert contract attorney and risk analyst. Analyze the contract image provided and return a comprehensive risk assessment in JSON format.
 
 Analyze every clause carefully. Look for:
@@ -19,7 +24,7 @@ Analyze every clause carefully. Look for:
 Return ONLY valid JSON (no markdown, no explanation) matching this exact structure:
 {
   "title": "string — descriptive title of this contract (e.g. '12-Month Apartment Lease Agreement')",
-  "contract_type": "one of: lease | employment | loan | insurance | gym | service | nda | other",
+  "contract_type": "one of: lease | employment | loan | insurance | gym | service | nda | purchase | other",
   "risk_score": number between 0-100 (0=very safe, 100=extremely risky),
   "risk_level": "one of: low | medium | high | critical",
   "summary": "2-3 sentence plain-English summary of what this contract is and the overall risk",
@@ -56,12 +61,7 @@ Include ALL significant clauses (aim for 5-15 clauses). Sort clauses by risk_lev
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+    return new Response(null, { headers: CORS_HEADERS });
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -76,7 +76,7 @@ Deno.serve(async (req: Request) => {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });
   }
 
@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
   if (authError || !user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });
   }
 
@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid request body' }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });
   }
 
@@ -116,7 +116,7 @@ Deno.serve(async (req: Request) => {
   if (profileError || !profile) {
     return new Response(JSON.stringify({ error: 'Profile not found' }), {
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });
   }
 
@@ -143,9 +143,18 @@ Deno.serve(async (req: Request) => {
       }),
       {
         status: 403,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
       }
     );
+  }
+
+  // Optimistically increment scans_used before calling Claude to close the TOCTOU race window.
+  // If analysis fails, we decrement it in the catch block.
+  if (profile.plan === 'free') {
+    await supabase
+      .from('profiles')
+      .update({ scans_used: scansUsed + 1 })
+      .eq('id', user.id);
   }
 
   // Create scan record with status: 'processing'
@@ -161,13 +170,40 @@ Deno.serve(async (req: Request) => {
     .single();
 
   if (scanCreateError || !scan) {
+    // Roll back the optimistic increment
+    if (profile.plan === 'free') {
+      await supabase
+        .from('profiles')
+        .update({ scans_used: scansUsed })
+        .eq('id', user.id);
+    }
     return new Response(JSON.stringify({ error: 'Failed to create scan record' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });
   }
 
   const scanId = scan.id;
+
+  // Build the content block — images use type:'image', PDFs use type:'document'
+  const isPdf = mimeType === 'application/pdf';
+  const fileContentBlock = isPdf
+    ? {
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: imageBase64,
+        },
+      }
+    : {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: mimeType,
+          data: imageBase64,
+        },
+      };
 
   try {
     // Call Claude Vision API
@@ -185,14 +221,7 @@ Deno.serve(async (req: Request) => {
           {
             role: 'user',
             content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: mimeType,
-                  data: imageBase64,
-                },
-              },
+              fileContentBlock,
               {
                 type: 'text',
                 text: ANALYSIS_PROMPT,
@@ -279,18 +308,12 @@ Deno.serve(async (req: Request) => {
       throw new Error('Failed to insert clauses');
     }
 
-    // Increment profiles.scans_used
-    await supabase
-      .from('profiles')
-      .update({ scans_used: scansUsed + 1 })
-      .eq('id', user.id);
-
     // Return full scan object with nested clauses
     const result = { ...updatedScan, clauses: clauses ?? [] };
 
     return new Response(JSON.stringify(result), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });
   } catch (error) {
     console.error('Analysis error:', error);
@@ -301,11 +324,19 @@ Deno.serve(async (req: Request) => {
       .update({ status: 'failed' })
       .eq('id', scanId);
 
+    // Roll back the optimistic increment so the user doesn't lose a scan on failure
+    if (profile.plan === 'free') {
+      await supabase
+        .from('profiles')
+        .update({ scans_used: scansUsed })
+        .eq('id', user.id);
+    }
+
     return new Response(
       JSON.stringify({ error: 'Analysis failed', scan_id: scanId }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
       }
     );
   }

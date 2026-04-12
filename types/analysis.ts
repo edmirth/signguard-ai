@@ -6,6 +6,7 @@ export type ContractType =
   | 'gym'
   | 'service'
   | 'nda'
+  | 'purchase'
   | 'other';
 
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';

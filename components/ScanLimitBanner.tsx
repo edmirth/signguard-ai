@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, fontSizes, radius, spacing } from '@/constants/theme';
-import { formatRelativeDate } from '@/lib/utils';
 
 interface ScanLimitBannerProps {
   isPro: boolean;
@@ -36,7 +35,9 @@ export function ScanLimitBanner({
           <View style={styles.textGroup}>
             <Text style={styles.limitTitle}>Scan limit reached</Text>
             <Text style={styles.limitSubtitle}>
-              Resets {formatRelativeDate(resetsAt)}
+              {resetsAt && !isNaN(new Date(resetsAt).getTime())
+                ? `Resets ${new Date(resetsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                : 'Resets next month'}
             </Text>
           </View>
           {onUpgrade && (

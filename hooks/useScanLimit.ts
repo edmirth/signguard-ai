@@ -1,10 +1,13 @@
 import { useAuthContext } from '@/providers/AuthProvider';
+import { useSubscriptionContext } from '@/providers/SubscriptionProvider';
 import { SCAN_LIMIT_FREE } from '@/constants/config';
 
 export function useScanLimit() {
   const { profile } = useAuthContext();
+  const { isPro: isProRevenueCat } = useSubscriptionContext();
 
-  const isPro = profile?.plan === 'pro';
+  // Use RevenueCat as source of truth — profile.plan serves as server fallback
+  const isPro = isProRevenueCat || profile?.plan === 'pro';
   const scansUsed = profile?.scans_used ?? 0;
   const scansLimit = isPro ? Infinity : (profile?.scans_limit ?? SCAN_LIMIT_FREE);
   const resetsAt = profile?.scans_reset_at ?? null;

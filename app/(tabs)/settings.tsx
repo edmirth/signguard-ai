@@ -1,6 +1,5 @@
-import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, SafeAreaView, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { router } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import { colors, fontSizes, radius, spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -66,17 +65,14 @@ export default function SettingsScreen() {
   }
 
   async function handleShare() {
-    const message = 'Check out SignGuard AI — snap a photo of any contract and get an instant AI risk report!';
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync('https://signguard.ai', { dialogTitle: message });
-    } else {
-      Linking.openURL(`https://signguard.ai`);
-    }
+    await Share.share({
+      message: 'Check out SignGuard AI — snap a photo of any contract and get an instant AI risk report! https://signguard.ai',
+    });
   }
 
   return (
+    <SafeAreaView style={styles.container}>
     <ScrollView
-      style={styles.container}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
@@ -129,7 +125,7 @@ export default function SettingsScreen() {
           label="Rate the App"
           onPress={() =>
             Linking.openURL(
-              'itms-apps://itunes.apple.com/app/idYOUR_APP_ID?action=write-review'
+              'https://apps.apple.com/app/signguard-ai?action=write-review'
             )
           }
         />
@@ -161,6 +157,7 @@ export default function SettingsScreen() {
       {/* Version */}
       <Text style={styles.version}>SignGuard AI v{appVersion}</Text>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 

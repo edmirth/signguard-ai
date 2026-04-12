@@ -25,24 +25,21 @@ export function useAnalyzeContract() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<{ message: string; code: ErrorCode } | null>(null);
   const [progress, setProgress] = useState(0);
-  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   function startProgressSimulation() {
-    let stepIndex = 0;
     setProgress(PROGRESS_STEPS[0]);
     const delays = [0, 3000, 8000, 18000]; // ms until each step transition
-    delays.forEach((delay, i) => {
+    progressTimerRef.current = delays.map((delay, i) =>
       setTimeout(() => {
         setProgress(PROGRESS_STEPS[i + 1] ?? PROGRESS_STEPS[i]);
-      }, delay + 500);
-    });
+      }, delay + 500)
+    );
   }
 
   function stopProgressSimulation() {
-    if (progressTimerRef.current) {
-      clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
-    }
+    progressTimerRef.current.forEach(clearTimeout);
+    progressTimerRef.current = [];
   }
 
   async function analyze(base64: string, mimeType: string = 'image/jpeg'): Promise<AnalyzeResult | null> {
@@ -83,18 +80,29 @@ export function useAnalyzeContract() {
         clearTimeout(timeoutId);
       }
 
+      const responseText = await response.text();
+      console.log('Edge function response status:', response.status);
+      console.log('Edge function response body:', responseText);
+
+      let responseData: any;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch {
+        responseData = responseText;
+      }
+
       if (response.status === 403) {
-        const body = await response.json().catch(() => ({}));
         const code: ErrorCode =
-          body?.error === 'scan_limit_reached' ? 'scan_limit_reached' : 'unknown';
+          responseData?.error_code === 'scan_limit_reached' ? 'scan_limit_reached' : 'unknown';
         throw { code };
       }
 
       if (!response.ok) {
+        console.error('Non-OK response:', response.status, responseData);
         throw { code: 'unknown' as ErrorCode };
       }
 
-      const data = await response.json();
+      const data = responseData;
       setProgress(100);
       return { scanId: data.id as string };
     } catch (err: unknown) {

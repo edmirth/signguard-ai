@@ -2,6 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/types/database';
+import { identifyUser } from '@/lib/analytics';
+import { resetRevenueCat } from '@/lib/revenue-cat';
+
 
 interface AuthContextValue {
   session: Session | null;
@@ -25,20 +28,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  async function fetchProfile(userId: string) {
+  async function fetchProfile(user: User) {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single();
+
     if (!error && data) {
       setProfile(data as Profile);
+      return;
     }
+
+    // Profile missing — create it as a safety net if the DB trigger didn't fire
+    const { data: created } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        email: user.email ?? '',
+        full_name: user.user_metadata?.full_name ?? null,
+        avatar_url: user.user_metadata?.avatar_url ?? null,
+      })
+      .select()
+      .single();
+
+    if (created) setProfile(created as Profile);
   }
 
   async function refreshProfile() {
     if (user) {
-      await fetchProfile(user.id);
+      await fetchProfile(user);
     }
   }
 
@@ -47,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        fetchProfile(s.user.id).finally(() => setIsLoading(false));
+        fetchProfile(s.user).finally(() => setIsLoading(false));
       } else {
         setIsLoading(false);
       }
@@ -58,9 +77,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(s);
         setUser(s?.user ?? null);
         if (event === 'SIGNED_IN' && s?.user) {
-          fetchProfile(s.user.id);
+          identifyUser(s.user.id, { email: s.user.email });
+          fetchProfile(s.user);
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
+          resetRevenueCat();
         }
         setIsLoading(false);
       }

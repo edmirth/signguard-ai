@@ -23,12 +23,13 @@ export default function AnalyzingScreen() {
         trackEvent('scan_completed', { scan_id: result.scanId });
         router.replace(`/report/${result.scanId}`);
       }
-      // error state is shown below if result is null
+      // error state is shown below via the error effect if result is null
     });
   }, []);
 
   useEffect(() => {
     if (error) {
+      clearPendingScan();
       if (error.code === 'scan_limit_reached') {
         trackEvent('paywall_shown', { trigger: 'scan_limit_reached' });
         router.replace('/paywall');

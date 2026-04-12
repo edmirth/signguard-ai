@@ -86,14 +86,16 @@ export function ClauseCard({ clause, isPro, onNegotiationPress }: ClauseCardProp
             </View>
           ) : null}
 
-          {isPro && clause.suggestion ? (
+          {clause.suggestion ? (
             <TouchableOpacity
               style={styles.negotiationRow}
               onPress={() => onNegotiationPress?.(clause.id)}
               activeOpacity={0.7}
             >
               <Badge level="pro" label="Pro" />
-              <Text style={styles.negotiationLink}>Get Negotiation Script →</Text>
+              <Text style={styles.negotiationLink}>
+                {isPro ? 'Get Negotiation Script →' : 'Unlock Negotiation Script →'}
+              </Text>
             </TouchableOpacity>
           ) : null}
         </View>

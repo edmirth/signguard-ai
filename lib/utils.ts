@@ -32,8 +32,8 @@ export function getRiskColor(level: string): string {
 }
 
 export function getScoreColor(score: number): string {
-  if (score >= 80) return colors.safe;
-  if (score >= 60) return colors.caution;
-  if (score >= 40) return colors.cautionAlt;
-  return colors.danger;
+  if (score >= 80) return colors.danger;
+  if (score >= 60) return colors.cautionAlt;
+  if (score >= 40) return colors.caution;
+  return colors.safe;
 }
