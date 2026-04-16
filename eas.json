@@ -30,6 +30,12 @@
     }
   },
   "submit": {
+    "preview": {
+      "ios": {
+        "appleId": "edmirthaqi2307@gmail.com",
+        "appleTeamId": "Q68R98589N"
+      }
+    },
     "production": {
       "ios": {
         "appleId": "your-apple-id@example.com",
