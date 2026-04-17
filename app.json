@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.signguard.ai",
+      "buildNumber": "2",
       "infoPlist": {
         "NSCameraUsageDescription": "SignGuard AI uses your camera to scan and analyze contract documents.",
         "NSPhotoLibraryUsageDescription": "SignGuard AI accesses your photo library so you can upload contract images for analysis.",
