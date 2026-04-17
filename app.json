@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "SignGuard AI uses your camera to scan and analyze contract documents.",
         "NSPhotoLibraryUsageDescription": "SignGuard AI accesses your photo library so you can upload contract images for analysis.",
-        "NSPhotoLibraryAddUsageDescription": "SignGuard AI saves your contract scan results to your photo library."
+        "NSPhotoLibraryAddUsageDescription": "SignGuard AI saves your contract scan results to your photo library.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -85,6 +86,12 @@
       },
       "router": {}
     },
-    "owner": "edmirth"
+    "owner": "edmirth",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6694883c-fee6-48b8-909b-016310f8faf3"
+    }
   }
 }
