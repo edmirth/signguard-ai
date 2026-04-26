@@ -3,6 +3,9 @@ import Purchases, { CustomerInfo } from 'react-native-purchases';
 import { useAuthContext } from '@/providers/AuthProvider';
 import { initRevenueCat } from '@/lib/revenue-cat';
 
+// Accounts that always get Pro access for internal testing (no payment required)
+const TEST_PRO_EMAILS = new Set(['edmirthaqi2307@gmail.com']);
+
 interface SubscriptionContextValue {
   customerInfo: CustomerInfo | null;
   isPro: boolean;
@@ -50,7 +53,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     };
   }, [user?.id]);
 
-  const isPro = !!customerInfo?.entitlements.active['pro_access'];
+  const isTestPro = !!user?.email && TEST_PRO_EMAILS.has(user.email);
+  const isPro = isTestPro || !!customerInfo?.entitlements.active['pro_access'];
 
   return (
     <SubscriptionContext.Provider value={{ customerInfo, isPro, isLoading, refresh: fetchCustomerInfo }}>
